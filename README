@@ -1,0 +1,7 @@
+PREREQUIRE
+~~~~~~~~~~
+
+  - pyquery
+  - lxml
+
+
