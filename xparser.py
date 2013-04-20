@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import re,urllib,imp,os
+import re,urllib,imp,os,logging,json
 from pyquery import PyQuery
 from lxml.html import soupparser
 
@@ -11,6 +11,7 @@ class Parser:
   @classmethod
   def parse(cls,task = None, ident = None,data = None):
     if type(task) is tuple: ident,data = task
+    elif type(task) is str: ident = task
     if not data and type(ident) is str: data = fetch(ident)
     handlers = parser.rules.get_handler(ident = ident)
     metadata.clear()
@@ -25,9 +26,10 @@ class Parser:
     return urllib.urlopen(url).read()
 
   @classmethod
-  def run(cls,tasks):
+  def run(cls, tasks, handle):
     for task in tasks:
-      cls.parse(task)
+      logging.debug("Handle %s" % task)
+      handle(cls.parse(task))
   
   @classmethod
   def set_handler(cls,parsers = None,parser_path = None):
@@ -35,7 +37,6 @@ class Parser:
       def  filter_py(f):
         if type(f) is str and len(f)>3 and f[-3:] == ".py":
           return f[0:-3]
-          #return f
       parsers = map(lambda f:filter_py(f),os.listdir(parser_path))
     for parser_file in parsers:
       if parser_file is not None:
@@ -44,9 +45,6 @@ class Parser:
 
   @classmethod
   def decode(cls,data):
-    """
-    @TODO expand decode languages.
-    """
     if type(data) == str:
       try:
         data = data.decode("utf-8")
@@ -56,6 +54,26 @@ class Parser:
         except:
           data = data.decode("gbk")
     return data
+
+  @classmethod
+  def encode(cls, data, encode_type = "utf-8"):
+    if type(data) == str:
+      return data
+    elif type(data) == unicode:
+      return data.encode(encode_type)
+    elif type(data) == dict:
+      encode_data = {}
+      for k in data:
+        encode_data[k] = cls.encode(data[k], encode_type = encode_type)
+      return encode_data
+    elif type(data) == list:
+      encode_data = []
+      for item in data:
+        encode_data.push(cls.encode(item))
+      return encode_data 
+    else:
+      logging.warning("Unsupport format data.")
+      return data
 
 class Rule:
   def __init__(self):
@@ -115,6 +133,10 @@ class Metadata(dict):
   def collect(cls,name,value):
     metadata[name] = value
 
+  def pprint(self):
+    data = Parser.encode(self)
+    print json.dumps(data , indent = 1, ensure_ascii = False)
+
 parser = Parser()
 metadata = Metadata()
 route = Decorator.route
@@ -123,35 +145,20 @@ collect = Metadata.collect
 fetch = Parser.fetch
 parse = Parser.parse
 decode = Parser.decode
+encode = Parser.encode
 run = Parser.run
 
-if __name__=="__main__":
-  """
-  Unit test
-  """
-  """
-  @route("http://*.yahoo.com/*")
-  @skip("http://omg.yahoo.com/*")
-  """
-  @route("http://test.com/*")
-  @skip("http://test.com/1/*")
-  def get_title(data,query):
-    title = query("title").text()
-    collect("title",title)
-
-  """
+def main():
+  """ Unit test: Get Yahoo! and Amazon's title, but skip omg.yahoo.com """
   tasks=[
     "http://www.yahoo.com",
-    "http://omg.yahoo.com/",
-    "http://news.yahoo.com/"
+    "http://omg.yahoo.com",
+    "http://www.amazon.com"
   ]
-  """
-  tasks = [
-    ("http://test.com/1","<html><title>t1</title></html>"),
-    ("http://test.com/2","<html><title>t2</title></html>"),
-  ]
+  def handle(data):
+    data.pprint()
+  parser.set_handler(parser_path = "examples")
+  run(tasks, handle)
 
-  run(tasks)
-
-  import doctest
-  doctest.testmod()
+if __name__=="__main__":
+  main()

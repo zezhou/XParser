@@ -1,7 +1,14 @@
-PREREQUIRE
-~~~~~~~~~~
+About
+~~~~~
+xParser is a web parser, using jQuery-like selector and url-matching handler, which goal is providing a simple and easy way to extract infomation from web.
 
-  - pyquery
+Installation
+~~~~~~~~~~~~
+
+1)Install required dependencies
   - lxml
+  - pyquery
 
+2)Put "xparser.py" to the directory where you plan to use it.
 
+3)Import and use codes. See lines in "examples" directoy to get details.
