@@ -13,6 +13,8 @@ class Parser:
     if type(task) is tuple: ident,data = task
     elif type(task) is str: ident = task
     if not data and type(ident) is str: data = fetch(ident)
+    if type(data) != unicode:
+        data = cls.decode(data)
     handlers = parser.rules.get_handler(ident = ident)
     metadata.clear()
     for handler in handlers:
@@ -52,17 +54,26 @@ class Parser:
         try:
           data = data.decode("gb2312")
         except:
-          data = data.decode("gbk")
+          try:
+            data = data.decode("gbk")
+          except:
+            logging.debug("Can't decode data.")
     return data
 
   @classmethod
   def encode(cls, data, encode_type = "utf-8"):
+    #print data
     if type(data) == str:
       return data
     elif type(data) == unicode:
       return data.encode(encode_type)
     elif type(data) == dict:
       encode_data = {}
+      for k in data:
+        encode_data[k] = cls.encode(data[k], encode_type = encode_type)
+      return encode_data
+    elif type(data) == Metadata:
+      encode_data = Metadata()
       for k in data:
         encode_data[k] = cls.encode(data[k], encode_type = encode_type)
       return encode_data
@@ -101,9 +112,9 @@ class Rule:
     handlers = []
     for item in self.rules:
       isSkip = False
-      rule = item.get('rule',None)
+      rule = item.get("rule",None)
       handler = item.get("handler",None)
-      skip_rules = item.get('skips',[])
+      skip_rules = item.get("skips",[])
       if type(skip_rules) is list and len(skip_rules) >0:
         for skip in skip_rules:
           if skip.match(ident):
